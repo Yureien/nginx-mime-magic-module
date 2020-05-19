@@ -1,0 +1,22 @@
+{
+    "configurations": [
+        {
+            "name": "Linux",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "${workspaceFolder}/../nginx-1.18.0/src/core",
+                "${workspaceFolder}/../nginx-1.18.0/src/event",
+                "${workspaceFolder}/../nginx-1.18.0/src/http",
+                "${workspaceFolder}/../nginx-1.18.0/src/os/unix",
+                "${workspaceFolder}/../nginx-1.18.0/src/http/modules",
+                "${workspaceFolder}/../nginx-1.18.0/objs"
+            ],
+            "defines": [],
+            "compilerPath": "/usr/bin/clang",
+            "cStandard": "c11",
+            "cppStandard": "c++14",
+            "intelliSenseMode": "clang-x64"
+        }
+    ],
+    "version": 4
+}
