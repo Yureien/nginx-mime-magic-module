@@ -29,12 +29,10 @@
 #include <ngx_config.h>
 #include <ngx_core.h>
 #include <ngx_http.h>
+
 #include <magic.h>
 
-static ngx_int_t ngx_http_mime_magic_init(ngx_conf_t *cf);
-static void *ngx_http_mime_magic_create_loc_conf(ngx_conf_t *cf);
-static char *ngx_http_mime_magic_merge_conf(ngx_conf_t *cf, void *parent, void *child);
-
+/* Module Conf */
 typedef struct
 {
     ngx_flag_t enable;
@@ -43,6 +41,15 @@ typedef struct
 
 magic_t magic_cookie;
 
+/* Function Definitions */
+static ngx_int_t ngx_http_mime_magic_init(ngx_conf_t *cf);
+static void *ngx_http_mime_magic_create_loc_conf(ngx_conf_t *cf);
+static char *ngx_http_mime_magic_merge_conf(ngx_conf_t *cf, void *parent, void *child);
+
+static ngx_int_t ngx_http_mime_magic_header_filter(ngx_http_request_t *r);
+static ngx_int_t ngx_http_mime_magic_body_filter(ngx_http_request_t *r, ngx_chain_t *in);
+
+/* Module Directives */
 static ngx_command_t ngx_http_mime_magic_commands[] = {
 
     {ngx_string("mime_magic"),
@@ -110,6 +117,9 @@ static ngx_int_t ngx_http_mime_magic_header_filter(ngx_http_request_t *r)
     if (!conf->enable)
         return ngx_http_next_header_filter(r);
 
+    if (r->main != r) // Only operate on main requests
+        return ngx_http_next_header_filter(r);
+
     if (magic_cookie == NULL)
     {
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ERROR: magic_cookie not initialized. Module mime_magic disabled.");
@@ -117,8 +127,7 @@ static ngx_int_t ngx_http_mime_magic_header_filter(ngx_http_request_t *r)
         return ngx_http_next_header_filter(r);
     }
 
-    return 0; // Do nothing, handle headers in ngx_http_mime_magic_body_filter
-    // Don't ask why it is 0. I searched everywhere but couldn't find what exactly return codes should be.
+    return NGX_OK; // Do nothing, handle headers in ngx_http_mime_magic_body_filter
 }
 
 static ngx_int_t ngx_http_mime_magic_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
@@ -136,7 +145,7 @@ static ngx_int_t ngx_http_mime_magic_body_filter(ngx_http_request_t *r, ngx_chai
     if (!conf->enable)
         return ngx_http_next_body_filter(r, in);
 
-    if (r->main != r) // Only main request
+    if (r->main != r) // Only operate on main requests
         return ngx_http_next_body_filter(r, in);
 
     if (magic_cookie == NULL)
@@ -212,8 +221,7 @@ static char *ngx_http_mime_magic_merge_conf(ngx_conf_t *cf, void *parent, void *
     return NGX_CONF_OK;
 }
 
-static ngx_int_t
-ngx_http_mime_magic_init(ngx_conf_t *cf)
+static ngx_int_t ngx_http_mime_magic_init(ngx_conf_t *cf)
 {
     ngx_http_next_header_filter = ngx_http_top_header_filter;
     ngx_http_top_header_filter = ngx_http_mime_magic_header_filter;

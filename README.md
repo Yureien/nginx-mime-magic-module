@@ -35,7 +35,7 @@ In this case, the version is `1.18.0`, so the download URL will be `https://ngin
 
 Then, execute below commands replacing with your nginx version.
 
-```
+```bash
 git clone https://github.com/FadedCoder/nginx-mime-magic-module.git
 wget https://nginx.org/download/nginx-NGINX_VERSION_HERE.tar.gz -O nginx
 tar -xf nginx-NGINX_VERSION_HERE.tar.gz
@@ -54,13 +54,13 @@ load_module modules/ngx_http_mime_magic_module.so;
 
 ## Configuration
 
-To enable it, you need to add `mime_magic on` to either location, server, or main block.
+To enable it, you need to add `mime_magic on` (or `mime_magic off` to disable) to either location, server, or main block.
 Optionally, you can specify which magic database to use using `mime_magic_db /path/to/magic` (this too, to either location, server, or main block).
 
 For example:
 
 ```
-location /mm {
+location /mimemagic {
     alias /srv/http;
     # ... Other config stuff ...
 
@@ -69,12 +69,28 @@ location /mm {
 }
 ```
 
+You can also enable or disable in different directories/ports:
+
+```
+location /mimemagic-enabled {
+    # ... Other config stuff ...
+    mime_magic on;
+    # mime_magic_db /path/to/magic;
+}
+
+location /mimemagic-disabled {
+    # ... Other config stuff ...
+    mime_magic off;
+    # mime_magic_db /path/to/magic;
+}
+```
+
 Then reload nginx. Probably `sudo systemctl restart nginx`.
 
 ## TODO
 
-1. Try to do a benchmark of with/without and improve performance as far as possible. Gain inspiration from https://github.com/omnigroup/Apache/blob/master/httpd/modules/metadata/mod_mime_magic.c maybe.
-2. TESTS! TESTS! TESTS! Find bugs. Fix or rename as feature. TESTS! TESTS! TESTS! MORE TESTS!
+1. Try to do a benchmark of with/without and improve performance as far as possible. Gain inspiration from https://github.com/apache/httpd/blob/trunk/modules/metadata/mod_mime_magic.c maybe.
+2. Add the option to use this module as a fallback.
 
 ## Contribution
 
