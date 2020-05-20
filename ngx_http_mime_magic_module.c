@@ -36,6 +36,7 @@
 typedef struct
 {
     ngx_flag_t enable;
+    ngx_flag_t fallback_mode;
     ngx_str_t magic_db;
 } ngx_http_mime_magic_conf_t;
 
@@ -57,6 +58,13 @@ static ngx_command_t ngx_http_mime_magic_commands[] = {
      ngx_conf_set_flag_slot,
      NGX_HTTP_LOC_CONF_OFFSET,
      offsetof(ngx_http_mime_magic_conf_t, enable),
+     NULL},
+
+    {ngx_string("mime_magic_fallback_mode"),
+     NGX_HTTP_LOC_CONF | NGX_HTTP_SRV_CONF | NGX_HTTP_MAIN_CONF | NGX_CONF_FLAG,
+     ngx_conf_set_flag_slot,
+     NGX_HTTP_LOC_CONF_OFFSET,
+     offsetof(ngx_http_mime_magic_conf_t, fallback_mode),
      NULL},
 
     {ngx_string("mime_magic_db"),
@@ -120,6 +128,9 @@ static ngx_int_t ngx_http_mime_magic_header_filter(ngx_http_request_t *r)
     if (r->main != r) // Only operate on main requests
         return ngx_http_next_header_filter(r);
 
+    if (ngx_http_get_module_ctx(r, ngx_http_mime_magic_module)) // Module called before on same request, skip
+        return ngx_http_next_header_filter(r);
+
     if (magic_cookie == NULL)
     {
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ERROR: magic_cookie not initialized. Module mime_magic disabled.");
@@ -148,6 +159,9 @@ static ngx_int_t ngx_http_mime_magic_body_filter(ngx_http_request_t *r, ngx_chai
     if (r->main != r) // Only operate on main requests
         return ngx_http_next_body_filter(r, in);
 
+    if (ngx_http_get_module_ctx(r, ngx_http_mime_magic_module)) // Module called before on same request, skip
+        return ngx_http_next_body_filter(r, in);
+
     if (magic_cookie == NULL)
     {
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ERROR: magic_cookie not initialized. Module mime_magic disabled.");
@@ -171,10 +185,30 @@ static ngx_int_t ngx_http_mime_magic_body_filter(ngx_http_request_t *r, ngx_chai
         return ngx_http_next_body_filter(r, in);
     }
 
-    const char *mime = magic_descriptor(magic_cookie, in->buf->file->fd);
+    int8_t use_magic = 1;
 
-    r->headers_out.content_type.data = (u_char *)mime;
-    r->headers_out.content_type.len = ngx_strlen((u_char *)mime);
+    if (conf->fallback_mode)
+    {
+        // In fallback mode, first try to get the mime type as predicted by nginx.
+        // If nginx could not predict (aka used default), then use libmagic.
+        if (ngx_http_set_content_type(r) != NGX_OK)
+            return NGX_ERROR;
+
+        // Get default mimetype from nginx core conf
+        ngx_http_core_loc_conf_t *clcf;
+        clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
+
+        if (r->headers_out.content_type.data != clcf->default_type.data)
+            use_magic = 0; // Successful mimetype predicted, don't use magic
+    }
+
+    if (use_magic == 1)
+    {
+        const char *mime = magic_descriptor(magic_cookie, in->buf->file->fd);
+
+        r->headers_out.content_type.data = (u_char *)mime;
+        r->headers_out.content_type.len = ngx_strlen((u_char *)mime);
+    }
 
     ngx_http_next_header_filter(r);
 
@@ -192,6 +226,7 @@ static void *ngx_http_mime_magic_create_loc_conf(ngx_conf_t *cf)
     }
 
     conf->enable = NGX_CONF_UNSET;
+    conf->fallback_mode = NGX_CONF_UNSET;
 
     return conf;
 }
@@ -202,6 +237,7 @@ static char *ngx_http_mime_magic_merge_conf(ngx_conf_t *cf, void *parent, void *
     ngx_http_mime_magic_conf_t *conf = child;
 
     ngx_conf_merge_value(conf->enable, prev->enable, 0);
+    ngx_conf_merge_value(conf->fallback_mode, prev->fallback_mode, 0);
     ngx_conf_merge_str_value(conf->magic_db, prev->magic_db, '\0');
 
     if (conf->enable)

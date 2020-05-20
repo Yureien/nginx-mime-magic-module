@@ -2,10 +2,16 @@
 
 Set Content-Type mime-type automatically from the magic bytes of some file! (Similar to file(1))
 
+By default, it compulsorily reads the file (upto a limit) to be served to get the mimetype using libmagic.
+
+You are able to configure the magic database to be used for this module. By default, it uses the default magic file for the system.
+
+Optionally, you can use fallback mode. In fallback mode, first nginx will try to guess the mimetype (based off extension only) and if it fails, it'll use libmagic to guess mimetype of the file to be served.
+
 ## Warning
 
 1. This module **was not** extensively tested. May have bugs that can crash your server. Report in issues if you find one, and I'll fix straight away.
-2. Searching through the buffer for magic bytes has a performance cost. You can either enable this module in only one location if you want. I'll try to maximise performance with upcoming updates.
+2. Searching through the buffer for magic bytes has a performance cost. You can either enable this module in only one location if you want. You might want to enable fallback mode for some additional performance (which will only use this module if nginx fails to predict mimetype).
 
 ## Installation (As dynamic module)
 
@@ -54,8 +60,11 @@ load_module modules/ngx_http_mime_magic_module.so;
 
 ## Configuration
 
-To enable it, you need to add `mime_magic on` (or `mime_magic off` to disable) to either location, server, or main block.
-Optionally, you can specify which magic database to use using `mime_magic_db /path/to/magic` (this too, to either location, server, or main block).
+| Name | Accepted Values | Works In | Description | Default |
+| --- | --- | --- | --- | --- |
+| `mime_magic` | `on`/`off` | `location`/`server`/`main` | Turn on the mime magic module with this. | `off` |
+| `mime_magic_db` | `/path/to/magic/file` | `location`/`server`/`main` | **Optional** Choose which magic database to use. Useful for using a custom magic database. | automatically obtained |
+| `mime_magic_fallback_mode` | `on`/`off` | `location`/`server`/`main` | **Optional** Turn on/off the mime magic fallback mode. It will first use nginx to predict mimetypes and only use libmagic if nginx fails. | `off` |
 
 For example:
 
@@ -66,6 +75,7 @@ location /mimemagic {
 
     mime_magic on;
     # mime_magic_db /path/to/magic;
+    # mime_magic_fallback_mode off;
 }
 ```
 
@@ -76,12 +86,14 @@ location /mimemagic-enabled {
     # ... Other config stuff ...
     mime_magic on;
     # mime_magic_db /path/to/magic;
+    # mime_magic_fallback_mode on;
 }
 
 location /mimemagic-disabled {
     # ... Other config stuff ...
     mime_magic off;
-    # mime_magic_db /path/to/magic;
+    # mime_magic_db /path/to/custom/magic;
+    # mime_magic_fallback_mode off;
 }
 ```
 
@@ -90,7 +102,6 @@ Then reload nginx. Probably `sudo systemctl restart nginx`.
 ## TODO
 
 1. Try to do a benchmark of with/without and improve performance as far as possible. Gain inspiration from https://github.com/apache/httpd/blob/trunk/modules/metadata/mod_mime_magic.c maybe.
-2. Add the option to use this module as a fallback.
 
 ## Contribution
 
