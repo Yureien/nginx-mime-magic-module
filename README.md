@@ -13,11 +13,18 @@ Optionally, you can use fallback mode. In fallback mode, first nginx will try to
 1. This module **was not** extensively tested. May have bugs that can crash your server. Report in issues if you find one, and I'll fix straight away.
 2. Searching through the buffer for magic bytes has a performance cost. You can either enable this module in only one location if you want. You might want to enable fallback mode for some additional performance (which will only use this module if nginx fails to predict mimetype).
 
-## Installation (As dynamic module)
+## Installation
 
-**Linux only. Maybe Mac. RIP Windows. Use WSL in Windows.**
+### Arch Linux (AUR package)
 
-If you have > Nginx v1.9.11, congrats you don't have to recompile entire nginx! Follow this to load this module dynamically:
+You can install this directly from the AUR ([nginx-mod-mime-magic<sup>AUR</sup>](https://aur.archlinux.org/packages/nginx-mod-mime-magic/)):
+```
+yay -S nginx-mod-mime-magic
+```
+
+### Compile from source
+
+If you have nginx with version greater than 1.9.11, congrats you don't have to recompile entire nginx! Follow this to load this module dynamically:
 
 First, you need `libmagic.so`, it is provided with `file` with most distros. It is probably preinstalled.
 
@@ -27,38 +34,33 @@ sudo pacman -S file  # Arch-based distros
 ```
 
 Second, get your nginx version:
-
 ```bash
-$ nginx -V
-
+$ nginx -v
 nginx version: nginx/1.18.0
-built with OpenSSL 1.1.1g  21 Apr 2020
-TLS SNI support enabled
-configure arguments: --prefix=/etc/nginx --conf-path=/etc/nginx/nginx.conf --sbin-path=/usr/bin/nginx --pid-path=/run/nginx.pid --lock-path=/run/lock/nginx.lock --user=http --group=http --http-log-path=/var/log/nginx/access.log --error-log-path=stderr --http-client-body-temp-path=/var/lib/nginx/client-body --http-proxy-temp-path=/var/lib/nginx/proxy --http-fastcgi-temp-path=/var/lib/nginx/fastcgi --http-scgi-temp-path=/var/lib/nginx/scgi --http-uwsgi-temp-path=/var/lib/nginx/uwsgi --with-cc-opt='-march=x86-64 -mtune=generic -O2 -pipe -fno-plt -D_FORTIFY_SOURCE=2' --with-ld-opt=-Wl,-O1,--sort-common,--as-needed,-z,relro,-z,now --with-compat --with-debug --with-file-aio --with-http_addition_module --with-http_auth_request_module --with-http_dav_module --with-http_degradation_module --with-http_flv_module --with-http_geoip_module --with-http_gunzip_module --with-http_gzip_static_module --with-http_mp4_module --with-http_realip_module --with-http_secure_link_module --with-http_slice_module --with-http_ssl_module --with-http_stub_status_module --with-http_sub_module --with-http_v2_module --with-mail --with-mail_ssl_module --with-pcre-jit --with-stream --with-stream_geoip_module --with-stream_realip_module --with-stream_ssl_module --with-stream_ssl_preread_module --with-threads
 ```
-
 In this case, the version is `1.18.0`, so the download URL will be `https://nginx.org/download/nginx-1.18.0.tar.gz`.
 
 Then, execute below commands replacing with your nginx version.
-
-```bash
-git clone https://github.com/FadedCoder/nginx-mime-magic-module.git
+```bash 
+# Please download a stable release.
+# Latest stable release at https://github.com/FadedCoder/nginx-mime-magic-module/releases/latest
+# Or, you can clone latest release (but not recommended):
+# git clone https://github.com/FadedCoder/nginx-mime-magic-module.git
 wget https://nginx.org/download/nginx-NGINX_VERSION_HERE.tar.gz -O nginx
 tar -xf nginx-NGINX_VERSION_HERE.tar.gz
 cd nginx-NGINX_VERSION_HERE
 ./configure --with-compat --with-ld-opt="-lmagic" --add-dynamic-module=../nginx-mime-magic-module/
 make modules
-sudo mkdir /etc/nginx/modules  # make modules folder in same directory as nginx.conf
+sudo mkdir -p /usr/lib/nginx/modules
 sudo cp objs/ngx_http_mime_magic_module.so /etc/nginx/modules
 ```
 
-To the top of your `nginx.conf` file (above `http {...}`) add:
-
-```
-load_module modules/ngx_http_mime_magic_module.so;
-```
-
 ## Configuration
+
+At the top of your `nginx.conf` file (above `http {...}`) add:
+```
+load_module /usr/lib/nginx/modules/ngx_http_mime_magic_module.so;
+```
 
 | Name | Accepted Values | Works In | Description | Default |
 | --- | --- | --- | --- | --- |
