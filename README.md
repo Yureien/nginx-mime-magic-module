@@ -29,18 +29,26 @@ If you have nginx with version greater than 1.9.11, congrats you don't have to r
 First, you need `libmagic.so`, it is provided with `file` with most distros. It is probably preinstalled.
 
 ```bash
-sudo apt install file  # Ubuntu/Debian etc
+sudo apt install libmagic-dev  # Ubuntu/Debian etc
 sudo pacman -S file  # Arch-based distros
 ```
 
-Second, get your nginx version:
+Second, get your nginx version and build flags:
 ```bash
 $ nginx -v
 nginx version: nginx/1.18.0
+built with OpenSSL 1.1.1k  25 Mar 2021
+TLS SNI support enabled
+configure arguments: --with-cc-opt='-g -O2 -ffile-prefix-map=/build/nginx-q9LD4J/nginx-1.18.0=. -fstack-protector-strong -Wformat -Werror=format-security -fPIC -Wdate-time -D_FORTIFY_SOURCE=2' --with-ld-opt='-Wl,-z,relro -Wl,-z,now -fPIC' --prefix=/usr/share/nginx --conf-path=/etc/nginx/nginx.conf --http-log-path=/var/log/nginx/access.log --error-log-path=/var/log/nginx/error.log --lock-path=/var/lock/nginx.lock --pid-path=/run/nginx.pid --modules-path=/usr/lib/nginx/modules --http-client-body-temp-path=/var/lib/nginx/body --http-fastcgi-temp-path=/var/lib/nginx/fastcgi --http-proxy-temp-path=/var/lib/nginx/proxy --http-scgi-temp-path=/var/lib/nginx/scgi --http-uwsgi-temp-path=/var/lib/nginx/uwsgi --with-compat --with-debug --with-pcre-jit --with-http_ssl_module --with-http_stub_status_module --with-http_realip_module --with-http_auth_request_module --with-http_v2_module --with-http_dav_module --with-http_slice_module --with-threads --with-http_addition_module --with-http_gunzip_module --with-http_gzip_static_module --with-http_sub_module
+
 ```
+
+Take note of the configure arguments because otherwise your module will not load because of "incompatible binary" error.
+You can remove all the modules to save time (no `--with-*_module`) and add `--add-dynamic-module=../nginx-mime-magic-module/`, and you will need to add "`-lmagic`" at the end of the `--with-ld-opt` argument.
+
 In this case, the version is `1.18.0`, so the download URL will be `https://nginx.org/download/nginx-1.18.0.tar.gz`.
 
-Then, execute below commands replacing with your nginx version.
+Then, execute below commands replacing with your nginx version and build flags.
 ```bash 
 # Please download a stable release.
 # Latest stable release at https://github.com/FadedCoder/nginx-mime-magic-module/releases/latest
@@ -52,7 +60,7 @@ cd nginx-NGINX_VERSION_HERE
 ./configure --with-compat --with-ld-opt="-lmagic" --add-dynamic-module=../nginx-mime-magic-module/
 make modules
 sudo mkdir -p /usr/lib/nginx/modules
-sudo cp objs/ngx_http_mime_magic_module.so /etc/nginx/modules
+sudo cp objs/ngx_http_mime_magic_module.so /usr/lib/nginx/modules
 ```
 
 ## Configuration
